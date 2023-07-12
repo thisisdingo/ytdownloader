@@ -73,7 +73,7 @@ const App: React.FC = () => {
   const [videoDuration, setVideoDuration] = useState(0);
 
   // Флаг на скачивание видео
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [fetchingVideoUrl, setIsFetchingUrl] = useState(false);
   const [downloadingProgress, setDownloadingProgress] = useState(0);
 
   // Текущая скорость
@@ -83,49 +83,38 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (youTubeLink.length == 0 || isDownloading) {
+    if (youTubeLink.length == 0 || fetchingVideoUrl) {
       return;
     }
 
-    setIsDownloading(true);
+    setIsFetchingUrl(true);
     setVideoUrl(null);
     setVideoDuration(0);
     setCurrentTime(0);
     setIsPlaying(false);
+    setPosition(0);
 
     // Получение ссылки с ютуба
-    ytdl(youTubeLink, {
-      quality: 'lowestvideo',
-      filter: (format: any) => {
-        return format.container === 'mp4';
-      },
-    }).then((links: any) => {
-      const savePath =
-        RNFS.DocumentDirectoryPath + `/video-${new Date().getTime()}.mp4`;
-
-      // Скачиваем его в локальный файл
-      RNFS.downloadFile({
-        fromUrl: links[0].url,
-        toFile: savePath,
-        background: true,
-        cacheable: true,
-        begin: res => {
-          console.log(`Start download: ${links[0].url}`);
-        },
-        progress: progress => {
-          console.log(progress);
-          setDownloadingProgress(
-            progress.bytesWritten / progress.contentLength,
-          );
-        },
-      })
-        .promise.then(res => {
-          // Отображаем
-          setVideoUrl(`file:///${savePath}`);
-        })
-        .finally(() => {
-          setIsDownloading(false);
+    ytdl.getInfo(youTubeLink).then((info: any) => {
+      let acceptFormats = (info.formats as Array<any>)
+        .filter(
+          format =>
+            format.mimeType.startsWith('video/mp4') &&
+            (format.mimeType.includes('av01') ||
+              format.mimeType.includes('avc1')) &&
+            format.hasAudio &&
+            format.hasVideo,
+        )
+        // Сортируем для самого низкого качества
+        .sort((a, b) => {
+          return a.width - b.width;
         });
+      if (!acceptFormats.length) {
+        return;
+      }
+      setVideoUrl(acceptFormats[0].url);
+      setVideoDuration(parseInt(acceptFormats[0].approxDurationMs) / 1000);
+      setIsFetchingUrl(false);
     });
   }, [youTubeLink]);
 
@@ -232,30 +221,25 @@ const App: React.FC = () => {
               </View>
             </View>
           ) : null}
-          {isDownloading ? (
+          {fetchingVideoUrl ? (
             <View>
               <ActivityIndicator />
-              <Text style={{color: 'white', marginTop: 8}}>
-                Downloading {(downloadingProgress * 100).toFixed(2)}%...
-              </Text>
+              <Text style={{color: 'white', marginTop: 8}}>Loading...</Text>
             </View>
           ) : videoUrl != null ? (
             <Video
               rate={isPlaying ? currentSpeed : 0}
+              // bufferConfig={{
+              //   minBufferMs: 0,
+              // }}
               source={{
                 uri: videoUrl,
               }}
               ref={playerRef}
               resizeMode="cover"
-              onLoad={data => {
-                setVideoDuration(data.duration / 2);
-              }}
               onProgress={data => {
                 setCurrentTime(data.currentTime);
-                setPosition(data.currentTime / (data.playableDuration / 2));
-              }}
-              onLoadStart={() => {
-                console.log('Starting load...');
+                setPosition(data.currentTime / videoDuration);
               }}
               onError={e => {
                 console.log(e);
