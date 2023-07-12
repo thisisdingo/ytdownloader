@@ -74,7 +74,7 @@ const App: React.FC = () => {
 
   // Флаг на скачивание видео
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadingProgress, setDownloadingProgress] = useState(0)
+  const [downloadingProgress, setDownloadingProgress] = useState(0);
 
   // Текущая скорость
   const [currentSpeed, setCurrentSpeed] = useState(1);
@@ -83,9 +83,16 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (youTubeLink.length == 0) {
+    if (youTubeLink.length == 0 || isDownloading) {
       return;
     }
+
+    setIsDownloading(true);
+    setVideoUrl(null);
+    setVideoDuration(0);
+    setCurrentTime(0);
+    setIsPlaying(false);
+
     // Получение ссылки с ютуба
     ytdl(youTubeLink, {
       quality: 'lowestvideo',
@@ -96,21 +103,21 @@ const App: React.FC = () => {
       const savePath =
         RNFS.DocumentDirectoryPath + `/video-${new Date().getTime()}.mp4`;
 
-      setIsDownloading(true);
       // Скачиваем его в локальный файл
       RNFS.downloadFile({
         fromUrl: links[0].url,
         toFile: savePath,
         background: true,
         cacheable: true,
-        begin: (res) => {
-          console.log("Response begin ===\n\n");
-          console.log(res);
+        begin: res => {
+          console.log(`Start download: ${links[0].url}`);
         },
-        progress: (progress) => {
+        progress: progress => {
           console.log(progress);
-          setDownloadingProgress(progress.bytesWritten / progress.contentLength)
-        }
+          setDownloadingProgress(
+            progress.bytesWritten / progress.contentLength,
+          );
+        },
       })
         .promise.then(res => {
           // Отображаем
@@ -228,7 +235,9 @@ const App: React.FC = () => {
           {isDownloading ? (
             <View>
               <ActivityIndicator />
-              <Text style={{color: 'white', marginTop: 8}}>Downloading {(downloadingProgress * 100).toFixed(2)}%...</Text>
+              <Text style={{color: 'white', marginTop: 8}}>
+                Downloading {(downloadingProgress * 100).toFixed(2)}%...
+              </Text>
             </View>
           ) : videoUrl != null ? (
             <Video
@@ -239,11 +248,11 @@ const App: React.FC = () => {
               ref={playerRef}
               resizeMode="cover"
               onLoad={data => {
-                setVideoDuration(data.duration);
+                setVideoDuration(data.duration / 2);
               }}
               onProgress={data => {
                 setCurrentTime(data.currentTime);
-                setPosition(data.currentTime / data.playableDuration);
+                setPosition(data.currentTime / (data.playableDuration / 2));
               }}
               onLoadStart={() => {
                 console.log('Starting load...');
@@ -267,7 +276,7 @@ const App: React.FC = () => {
                   let seconds = currentTime;
                   return (
                     (seconds - (seconds %= 60)) / 60 +
-                    (10 < seconds ? ':' : ':0') +
+                    (9 < seconds ? ':' : ':0') +
                     seconds.toFixed(0)
                   );
                 })()}
@@ -277,7 +286,7 @@ const App: React.FC = () => {
                   let seconds = videoDuration;
                   return (
                     (seconds - (seconds %= 60)) / 60 +
-                    (10 < seconds ? ':' : ':0') +
+                    (9 < seconds ? ':' : ':0') +
                     seconds.toFixed(0)
                   );
                 })()}
