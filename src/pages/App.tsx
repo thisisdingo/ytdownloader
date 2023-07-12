@@ -58,9 +58,7 @@ const App: React.FC = () => {
   const [youTubeLink, setYouTubeLink] = useState('');
 
   // Ссылка файла на видео которое нужно воспроизвести
-  const [videoUrl, setVideoUrl] = useState(
-    'http://localhost:8080/sample-4.mp4',
-  );
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   // Плеер
   let playerRef = useRef<Video | null>(null);
@@ -76,11 +74,10 @@ const App: React.FC = () => {
 
   // Флаг на скачивание видео
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadingProgress, setDownloadingProgress] = useState(0)
 
   // Текущая скорость
   const [currentSpeed, setCurrentSpeed] = useState(1);
-  // Сохранение скорости после паузы тк текущая скорость ставится на 0
-  const [savedCurrentSpeedState, setSavedCurrentSpeedState] = useState(1);
 
   // is playing
   const [isPlaying, setIsPlaying] = useState(false);
@@ -91,7 +88,7 @@ const App: React.FC = () => {
     }
     // Получение ссылки с ютуба
     ytdl(youTubeLink, {
-      quality: '135',
+      quality: 'lowestvideo',
       filter: (format: any) => {
         return format.container === 'mp4';
       },
@@ -104,6 +101,16 @@ const App: React.FC = () => {
       RNFS.downloadFile({
         fromUrl: links[0].url,
         toFile: savePath,
+        background: true,
+        cacheable: true,
+        begin: (res) => {
+          console.log("Response begin ===\n\n");
+          console.log(res);
+        },
+        progress: (progress) => {
+          console.log(progress);
+          setDownloadingProgress(progress.bytesWritten / progress.contentLength)
+        }
       })
         .promise.then(res => {
           // Отображаем
@@ -130,14 +137,7 @@ const App: React.FC = () => {
     return (
       <TouchableOpacity
         onPress={() => {
-          if (isPlaying) {
-            setSavedCurrentSpeedState(currentSpeed);
-            setCurrentSpeed(0);
-            setIsPlaying(false);
-          } else {
-            setCurrentSpeed(savedCurrentSpeedState);
-            setIsPlaying(true);
-          }
+          setIsPlaying(!isPlaying);
         }}>
         <Image
           source={isPlaying ? pause : play}
@@ -178,7 +178,7 @@ const App: React.FC = () => {
           paddingTop: 16,
         }}>
         <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-          {!isPortrait ? (
+          {!isPortrait && videoUrl != null ? (
             <View
               style={{
                 position: 'absolute',
@@ -228,11 +228,11 @@ const App: React.FC = () => {
           {isDownloading ? (
             <View>
               <ActivityIndicator />
-              <Text style={{color: 'white', marginTop: 8}}>Downloading...</Text>
+              <Text style={{color: 'white', marginTop: 8}}>Downloading {(downloadingProgress * 100).toFixed(2)}%...</Text>
             </View>
-          ) : videoUrl.length != 0 ? (
+          ) : videoUrl != null ? (
             <Video
-              rate={currentSpeed}
+              rate={isPlaying ? currentSpeed : 0}
               source={{
                 uri: videoUrl,
               }}
@@ -240,7 +240,6 @@ const App: React.FC = () => {
               resizeMode="cover"
               onLoad={data => {
                 setVideoDuration(data.duration);
-                setIsPlaying(true);
               }}
               onProgress={data => {
                 setCurrentTime(data.currentTime);
@@ -260,7 +259,7 @@ const App: React.FC = () => {
           ) : null}
         </View>
 
-        {videoUrl.length != 0 ? (
+        {videoUrl != null ? (
           <View>
             <View style={{flexDirection: 'row'}}>
               <Text style={{color: 'white', flex: 1}}>
@@ -268,7 +267,7 @@ const App: React.FC = () => {
                   let seconds = currentTime;
                   return (
                     (seconds - (seconds %= 60)) / 60 +
-                    (9 < seconds ? ':' : ':0') +
+                    (10 < seconds ? ':' : ':0') +
                     seconds.toFixed(0)
                   );
                 })()}
@@ -278,7 +277,7 @@ const App: React.FC = () => {
                   let seconds = videoDuration;
                   return (
                     (seconds - (seconds %= 60)) / 60 +
-                    (9 < seconds ? ':' : ':0') +
+                    (10 < seconds ? ':' : ':0') +
                     seconds.toFixed(0)
                   );
                 })()}
