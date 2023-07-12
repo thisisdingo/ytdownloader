@@ -20,7 +20,6 @@ import {Colors} from 'react-native/Libraries/NewAppScreen';
 import Search from '../components/Search';
 import ytdl from 'react-native-ytdl';
 import Video from 'react-native-video';
-import RNFS from 'react-native-fs';
 import {Slider} from '@miblanchard/react-native-slider';
 import Speed from '../components/Speed';
 import {useSafeAreaInsets, SafeAreaView} from 'react-native-safe-area-context';
@@ -229,9 +228,6 @@ const App: React.FC = () => {
           ) : videoUrl != null ? (
             <Video
               rate={isPlaying ? currentSpeed : 0}
-              // bufferConfig={{
-              //   minBufferMs: 0,
-              // }}
               source={{
                 uri: videoUrl,
               }}
@@ -257,7 +253,7 @@ const App: React.FC = () => {
             <View style={{flexDirection: 'row'}}>
               <Text style={{color: 'white', flex: 1}}>
                 {(() => {
-                  let seconds = currentTime;
+                  let seconds = Math.round(currentTime);
                   return (
                     (seconds - (seconds %= 60)) / 60 +
                     (9 < seconds ? ':' : ':0') +
