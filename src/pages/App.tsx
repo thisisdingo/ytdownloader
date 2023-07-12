@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Platform,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -96,14 +97,26 @@ const App: React.FC = () => {
     // Получение ссылки с ютуба
     ytdl.getInfo(youTubeLink).then((info: any) => {
       let acceptFormats = (info.formats as Array<any>)
-        .filter(
-          format =>
-            format.mimeType.startsWith('video/mp4') &&
-            (format.mimeType.includes('av01') ||
-              format.mimeType.includes('avc1')) &&
-            format.hasAudio &&
-            format.hasVideo,
-        )
+        .filter(format => {
+          if (Platform.OS == 'ios') {
+            return (
+              format.mimeType.startsWith('video/mp4') &&
+              (format.mimeType.includes('av01') ||
+                format.mimeType.includes('avc1')) &&
+              format.hasAudio &&
+              format.hasVideo
+            );
+          } else {
+            return (
+              format.mimeType.startsWith('video/mp4') &&
+              (format.mimeType.includes('opus') ||
+                format.mimeType.includes('vp9') ||
+                format.mimeType.includes('mp4a')) &&
+              format.hasAudio &&
+              format.hasVideo
+            );
+          }
+        })
         // Сортируем для самого низкого качества
         .sort((a, b) => {
           return a.width - b.width;
@@ -111,9 +124,11 @@ const App: React.FC = () => {
       if (!acceptFormats.length) {
         return;
       }
+      console.log(acceptFormats[0]);
+      setIsFetchingUrl(false);
       setVideoUrl(acceptFormats[0].url);
       setVideoDuration(parseInt(acceptFormats[0].approxDurationMs) / 1000);
-      setIsFetchingUrl(false);
+      setIsPlaying(true);
     });
   }, [youTubeLink]);
 
@@ -226,32 +241,38 @@ const App: React.FC = () => {
               <Text style={{color: 'white', marginTop: 8}}>Loading...</Text>
             </View>
           ) : videoUrl != null ? (
-            <Video
-              rate={isPlaying ? currentSpeed : 0}
-              source={{
-                uri: videoUrl,
-              }}
-              ref={playerRef}
-              resizeMode="cover"
-              onProgress={data => {
-                setCurrentTime(data.currentTime);
-                setPosition(data.currentTime / videoDuration);
-              }}
-              onError={e => {
-                console.log(e);
-              }}
+            <View
               style={{
                 height: 300,
                 width: '100%',
-              }}
-            />
+              }}>
+              <Video
+                rate={currentSpeed}
+                paused={!isPlaying}
+                source={{
+                  uri: videoUrl,
+                }}
+                ref={playerRef}
+                resizeMode="cover"
+                onProgress={data => {
+                  setCurrentTime(data.currentTime);
+                  setPosition(data.currentTime / videoDuration);
+                }}
+                onLoad={e => {
+                  console.log(e);
+                }}
+                onError={e => {
+                  console.log(e);
+                }}
+              />
+            </View>
           ) : null}
         </View>
 
         {videoUrl != null ? (
           <View>
             <View style={{flexDirection: 'row'}}>
-              <Text style={{color: 'white', flex: 1}}>
+              <Text style={{color: 'white', flex: 1, marginLeft: 8}}>
                 {(() => {
                   let seconds = Math.round(currentTime);
                   return (
@@ -261,7 +282,7 @@ const App: React.FC = () => {
                   );
                 })()}
               </Text>
-              <Text style={{color: 'white'}}>
+              <Text style={{color: 'white', marginRight: 8}}>
                 {(() => {
                   let seconds = videoDuration;
                   return (
@@ -305,11 +326,13 @@ const App: React.FC = () => {
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    height: 47,
                   }}>
                   <Back />
                 </View>
                 <View
                   style={{
+                    height: 60,
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
@@ -319,6 +342,7 @@ const App: React.FC = () => {
                 <View
                   style={{
                     flex: 1,
+                    height: 47,
                     justifyContent: 'center',
                     alignItems: 'center',
                   }}>
