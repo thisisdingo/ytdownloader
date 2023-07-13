@@ -241,31 +241,29 @@ const App: React.FC = () => {
               <Text style={{color: 'white', marginTop: 8}}>Loading...</Text>
             </View>
           ) : videoUrl != null ? (
-            <View
+            <Video
+              rate={currentSpeed}
+              paused={!isPlaying}
+              source={{
+                uri: videoUrl,
+              }}
+              ref={playerRef}
+              resizeMode="cover"
+              onProgress={data => {
+                setCurrentTime(data.currentTime);
+                setPosition(data.currentTime / videoDuration);
+              }}
+              onLoad={e => {
+                console.log(e);
+              }}
+              onError={e => {
+                console.log(e);
+              }}
               style={{
                 height: 300,
                 width: '100%',
-              }}>
-              <Video
-                rate={currentSpeed}
-                paused={!isPlaying}
-                source={{
-                  uri: videoUrl,
-                }}
-                ref={playerRef}
-                resizeMode="cover"
-                onProgress={data => {
-                  setCurrentTime(data.currentTime);
-                  setPosition(data.currentTime / videoDuration);
-                }}
-                onLoad={e => {
-                  console.log(e);
-                }}
-                onError={e => {
-                  console.log(e);
-                }}
-              />
-            </View>
+              }}
+            />
           ) : null}
         </View>
 
